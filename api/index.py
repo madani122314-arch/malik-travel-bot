@@ -1,409 +1,476 @@
 
 import json
 import os
-import urllib.request
+import logging
+from urllib.request import Request, urlopen
+from urllib.error import URLError, HTTPError
 from http.server import BaseHTTPRequestHandler
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "")
 WEBHOOK_SECRET = os.environ.get("TELEGRAM_WEBHOOK_SECRET", "")
-WHATSAPP_URL = os.environ.get("WHATSAPP_URL", "")
+WHATSAPP_URL = "https://wa.me/213779749129"
 
-API = f"https://api.telegram.org/bot{TOKEN}"
-
-COUNTRIES = [
-    ("🇪🇸 Espagne — إسبانيا", "espagne"),
-    ("🇪🇪 Estonie — إستونيا", "estonie"),
-    ("🇬🇧 UK — المملكة المتحدة", "uk"),
-    ("🇺🇸 USA — الولايات المتحدة", "usa"),
-    ("🇨🇦 Canada — كندا", "canada"),
-    ("🇫🇷 France — فرنسا", "france"),
-    ("🇮🇹 Italie — إيطاليا", "italie"),
-    ("🇩🇪 Allemagne — ألمانيا", "allemagne"),
-    ("🇳🇴 Norvège — النرويج", "norvege"),
-    ("🇲🇹 Malte — مالطا", "malte"),
-    ("🇧🇪 Belgique — بلجيكا", "belgique"),
-    ("🇳🇱 Hollande — هولندا", "hollande"),
-    ("🇵🇹 Portugal — البرتغال", "portugal"),
-    ("🇹🇷 Turquie — تركيا", "turquie"),
-    ("🌍 Autre pays", "autre"),
-]
-
-PROFESSIONS = [
-    ("Salarié", "salarie"),
-    ("Commerçant", "commercant"),
-    ("Professions libérales / Hirafi", "liberal"),
-    ("Agriculteur", "agriculteur"),
-    ("Retraité", "retraite"),
-    ("Fonctionnaire", "fonctionnaire"),
-    ("Étudiant", "etudiant"),
-    ("Sans emploi", "sans_emploi"),
-]
-
-DOCS = {
-    "salarie": """📂 DOSSIER SALARIÉ
-
-1. Attestation de travail
-2. Les 3 dernières fiches de paie
-3. CNAS
-4. Titre de congé
-5. Relevés de compte bancaire en dinars des 6 derniers mois
-6. Attestation de solde en euros : minimum 2 500 €
-7. Acte de naissance en France
-8. Fiche familiale en France
-9. Acte de mariage en France
-10. Passeport
-11. Deux photos d'identité""",
-
-    "commercant": """📂 DOSSIER COMMERÇANT
-
-1. Registre de commerce avec traduction française
-2. C20
-3. Existence
-4. Extrait de rôle
-5. CASNOS
-6. Relevés de compte bancaire en dinars des 6 derniers mois
-7. Attestation de solde en euros : minimum 2 500 €
-8. Acte de naissance en France
-9. Fiche familiale en France
-10. Acte de mariage en France
-11. Passeport
-12. Deux photos""",
-
-    "liberal": """📂 DOSSIER PROFESSIONS LIBÉRALES / HIRAFI
-
-1. Carte professionnelle
-2. C20
-3. Existence
-4. Extrait de rôle
-5. Attestation CASNOS
-6. Relevés de compte bancaire en dinars des 6 derniers mois
-7. Attestation de solde en euros : minimum 2 500 €
-8. Acte de naissance en France
-9. Fiche familiale en France
-10. Acte de mariage en France
-11. Passeport
-12. Deux photos d'identité""",
-
-    "etudiant": """📂 DOSSIER ÉTUDIANT
-
-1. Carte de scolarité
-2. Relevés de compte bancaire en dinars des 6 derniers mois
-3. Attestation de solde en euros : minimum 2 500 €
-4. Acte de naissance en France
-5. Prise en charge
-6. Passeport
-7. Deux photos d'identité
-8. Autorisation parentale pour les mineurs
-9. Dossier du garant qui prend en charge le voyage"""
-}
-
-GENERAL_DOCS = """📄 DOSSIER À FOURNIR — DOCUMENTS GÉNÉRAUX
-
-1. Formulaire de demande de visa rempli et signé, avec photo récente en couleur sur fond blanc.
-2. Passeport valide au moins 3 mois après l'expiration du visa et comportant au moins 2 pages libres.
-3. Photocopies de toutes les pages du passeport actuel, délivré depuis moins de 10 ans.
-4. Assurance voyage valable dans l'espace Schengen, couvrant les frais médicaux et le rapatriement, minimum 30 000 €.
-5. Justificatifs de moyens de subsistance : relevés bancaires des 6 derniers mois ou autres justificatifs de ressources.
-6. Pour les mineurs ne voyageant pas avec les deux parents : autorisation parentale et extrait de naissance. Si le tuteur n'est pas le parent, justificatif de tutelle.
-7. Si le demandeur dépose son dossier seul avec les documents d'un proche : prise en charge légalisée ou attestation de l'employeur selon le cas.
-8. Pour les demandeurs non algériens : titre de séjour légal en Algérie, valable au moins 3 mois après l'expiration du visa.
-9. Réservation d'hôtel en Espagne.
-10. Réservation du billet d'avion aller-retour avec itinéraire.
-11. Pour les femmes enceintes : rapport médical détaillé.
-12. Fiche familiale pour les personnes mariées.
-13. Certificat de résidence si demandé selon le lieu de dépôt ou de délivrance du passeport.
-14. Originaux et photocopies complètes du dossier.
-
-⚠️ Vérifiez toujours la liste officielle actuelle du centre de visa avant le dépôt."""
+TELEGRAM_API = f"https://api.telegram.org/bot{TOKEN}/"
 
 
-def telegram(method, data):
+# -------------------- TELEGRAM API --------------------
+
+def telegram(method, payload=None):
     if not TOKEN:
         raise RuntimeError("TELEGRAM_BOT_TOKEN is missing")
 
-    request = urllib.request.Request(
-        f"{API}/{method}",
-        data=json.dumps(data).encode("utf-8"),
+    data = json.dumps(payload or {}).encode("utf-8")
+    request = Request(
+        TELEGRAM_API + method,
+        data=data,
         headers={"Content-Type": "application/json"},
         method="POST",
     )
-    with urllib.request.urlopen(request, timeout=15) as response:
+
+    with urlopen(request, timeout=15) as response:
         result = json.loads(response.read().decode("utf-8"))
 
     if not result.get("ok"):
-        raise RuntimeError("Telegram API request failed")
-    return result
+        raise RuntimeError(f"Telegram API error: {result}")
+
+    return result.get("result")
 
 
 def send(chat_id, text, keyboard=None):
-    data = {"chat_id": chat_id, "text": text}
-    if keyboard:
-        data["reply_markup"] = {"inline_keyboard": keyboard}
-    return telegram("sendMessage", data)
+    payload = {
+        "chat_id": chat_id,
+        "text": text,
+    }
+
+    if keyboard is not None:
+        payload["reply_markup"] = {"inline_keyboard": keyboard}
+
+    return telegram("sendMessage", payload)
 
 
-def make_rows(buttons, width=2):
-    return [
-        [
-            {"text": label, "callback_data": value}
-            for label, value in buttons[i:i + width]
-        ]
-        for i in range(0, len(buttons), width)
-    ]
+def answer_callback(callback_id):
+    try:
+        telegram("answerCallbackQuery", {"callback_query_id": callback_id})
+    except Exception:
+        logger.exception("Could not answer callback query")
 
 
 def home_button():
-    return [[{"text": "🏠 Menu principal", "callback_data": "menu"}]]
+    return [[{"text": "🏠 Menu principal", "callback_data": "home"}]]
 
 
 def whatsapp_button():
-    if WHATSAPP_URL:
-        return [[{"text": "📲 Contact WhatsApp", "url": WHATSAPP_URL}]]
-    return []
+    return [[{"text": "📱 Contact WhatsApp", "url": WHATSAPP_URL}]]
 
 
-def start_menu(chat_id):
-    text = (
-        "✈️ مرحبا بكم في MALIK TRAVEL 🌍\n\n"
-        "يسعدنا استقبالكم ومرافقتكم في رحلتكم، من أول خطوة حتى "
-        "تحقيق مشروع سفركم.\n\n"
-        "نضع تحت تصرّفكم خدماتنا في مجال التأشيرات، المواعيد، "
-        "وحجوزات السفر، مع الحرص على مرافقتكم وتقديم المعلومات اللازمة.\n\n"
-        "MALIK TRAVEL — وجهتكم نحو العالم. 🌐\n\n"
-        "🌍 اختار البلد:"
-    )
-    buttons = [(label, "country_" + code) for label, code in COUNTRIES]
-    send(chat_id, text, make_rows(buttons, 2))
-
-
-def show_country(chat_id, country):
-    names = dict((code, label) for label, code in COUNTRIES)
-    if country == "autre":
-        send(
-            chat_id,
-            "🌍 Autre pays\n\nللاستفسار عن بلد آخر، تواصل معنا.",
-            whatsapp_button() + home_button(),
-        )
-        return
-
-    if country == "espagne":
-        send(
-            chat_id,
-            "🇪🇸 Espagne — إسبانيا\n\nاختار الخدمة:",
-            [
-                [{"text": "📅 RDV", "callback_data": "sp_rdv"}],
-                [{"text": "📂 Traitement du dossier",
-                  "callback_data": "sp_traitement"}],
-                [{"text": "📄 Dossier à fournir",
-                  "callback_data": "general_docs"}],
-            ] + home_button(),
-        )
-        return
-
-    send(
-        chat_id,
-        f"{names.get(country, country)}\n\n"
-        "للحصول على معلومات حول التأشيرة والوثائق والمواعيد، تواصل معنا.",
-        whatsapp_button() + home_button(),
-    )
-
-
-def show_regions(chat_id):
-    send(
-        chat_id,
-        "📅 RDV Espagne\n\nاختار المركز:",
-        [
-            [{"text": "🇩🇿 Alger", "callback_data": "sp_alger"}],
-            [{"text": "🇩🇿 Oran", "callback_data": "sp_oran"}],
-        ] + home_button(),
-    )
-
-
-def show_centers(chat_id, city):
-    if city == "alger":
-        title = "📍 مواعيد الجزائر"
-        buttons = [
-            ("À domicile Alger", "home_alger"),
-            ("ALG 1", "alg1"),
-            ("ALG 2", "alg2"),
-            ("ALG 3", "alg3"),
-        ]
-    else:
-        title = "📍 مواعيد وهران"
-        buttons = [
-            ("À domicile Oran", "home_oran"),
-            ("Oran 1", "oran1"),
-            ("Oran 2", "oran2"),
-            ("Oran 3", "oran3"),
-        ]
-
-    send(chat_id, title + "\n\nاختار نوع الموعد:", 
-         make_rows(buttons, 2) + home_button())
-
-
-def show_appointment_docs(chat_id, choice):
-    if choice.startswith("home_"):
-        city = "Alger" if choice.endswith("alger") else "Oran"
-        text = (
-            f"🏠 À domicile {city}\n\n"
-            "📋 الوثائق والمعلومات المطلوبة:\n\n"
-            "1. Passeport\n"
-            "2. Fiche familiale en France\n"
-            "3. Numéro de téléphone\n"
-            "4. Adresse du domicile\n"
-            "5. Email"
-        )
-    elif choice in ("alg1", "oran1"):
-        text = (
-            f"📅 {choice.upper()}\n\n"
-            "📋 الوثائق المطلوبة:\n\n"
-            "1. Passeport\n"
-            "2. Carte magnétique فيها 10 000 DA\n"
-            "3. Photo selfie"
-        )
-    else:
-        text = (
-            f"📅 {choice.upper()}\n\n"
-            "📋 الوثائق المطلوبة:\n\n"
-            "1. Passeport\n"
-            "2. Dernier visa Espagne\n"
-            "3. Carte magnétique فيها 1 000 000 DA\n"
-            "4. Photo selfie"
-        )
-
-    send(
-        chat_id,
-        text,
-        whatsapp_button() + home_button(),
-    )
-
-
-def show_professions(chat_id):
-    send(
-        chat_id,
-        "📂 Traitement du dossier Espagne\n\nاختار مهنتك:",
-        make_rows(PROFESSIONS, 2) + home_button(),
-    )
-
-
-def show_profession_docs(chat_id, profession):
-    labels = dict((key, label) for label, key in PROFESSIONS)
-
-    if profession in DOCS:
-        text = DOCS[profession]
-    else:
-        text = (
-            f"📂 {labels.get(profession, profession)}\n\n"
-            "قائمة الوثائق الخاصة بهذه المهنة ما زالت تحتاج إلى التفاصيل "
-            "اللي تحددها MALIK TRAVEL."
-        )
-
-    send(chat_id, text, whatsapp_button() + home_button())
+def with_home(rows):
+    return rows + home_button()
 
 
 def show_contact(chat_id):
     send(
         chat_id,
-        "📞 MALIK TRAVEL\n\nللاستفسار حول التأشيرات والمواعيد والوثائق، تواصل معنا.",
+        "Pour plus d'informations, veuillez nous contacter sur WhatsApp.",
         whatsapp_button() + home_button(),
     )
 
 
-def handle_update(update):
-    message = update.get("message")
-    if message:
-        chat_id = message["chat"]["id"]
-        text = message.get("text", "").strip()
+# -------------------- WELCOME AND COUNTRIES --------------------
 
-        if text.startswith("/start") or text.startswith("/help"):
-            start_menu(chat_id)
-        else:
-            send(
-                chat_id,
-                "استعمل الأزرار اللي في القائمة باش تختار الخدمة.",
-                home_button(),
+WELCOME = (
+    "✈️ مرحبا بكم في MALIK TRAVEL 🌍\n\n"
+    "يسعدنا استقبالكم ومرافقتكم في رحلتكم، من أول خطوة حتى تحقيق مشروع سفركم.\n\n"
+    "نضع تحت تصرّفكم خدماتنا في مجال التأشيرات، المواعيد، وحجوزات السفر، "
+    "مع الحرص على مرافقتكم وتقديم المعلومات اللازمة.\n\n"
+    "MALIK TRAVEL — وجهتكم نحو العالم. 🌐"
+)
+
+COUNTRIES = [
+    ("🇪🇸 Espagne — إسبانيا", "country_es"),
+    ("🇪🇪 Estonie — إستونيا", "country_ee"),
+    ("🇬🇧 UK — المملكة المتحدة", "country_uk"),
+    ("🇺🇸 USA — الولايات المتحدة", "country_us"),
+    ("🇨🇦 Canada — كندا", "country_ca"),
+    ("🇫🇷 France — فرنسا", "country_fr"),
+    ("🇮🇹 Italie — إيطاليا", "country_it"),
+    ("🇩🇪 Allemagne — ألمانيا", "country_de"),
+    ("🇳🇴 Norvège — النرويج", "country_no"),
+    ("🇲🇹 Malte — مالطا", "country_mt"),
+    ("🇧🇪 Belgique — بلجيكا", "country_be"),
+    ("🇳🇱 Hollande — هولندا", "country_nl"),
+    ("🇵🇹 Portugal — البرتغال", "country_pt"),
+    ("🇹🇷 Turquie — تركيا", "country_tr"),
+    ("🌍 Autre pays", "country_other"),
+]
+
+
+def start_menu(chat_id):
+    rows = []
+    for index in range(0, len(COUNTRIES), 2):
+        row = [
+            {
+                "text": COUNTRIES[index][0],
+                "callback_data": COUNTRIES[index][1],
+            }
+        ]
+
+        if index + 1 < len(COUNTRIES):
+            row.append(
+                {
+                    "text": COUNTRIES[index + 1][0],
+                    "callback_data": COUNTRIES[index + 1][1],
+                }
             )
+
+        rows.append(row)
+
+    send(chat_id, WELCOME + "\n\nChoisissez votre destination :", rows)
+
+
+# -------------------- SPAIN MENU --------------------
+
+def show_spain_menu(chat_id):
+    rows = [
+        [{"text": "📅 RDV", "callback_data": "sp_rdv"}],
+
+        # Button actions intentionally swapped:
+        # Traitement du dossier -> general documents.
+        [{"text": "📂 Traitement du dossier",
+          "callback_data": "general_docs"}],
+
+        # Dossier à fournir -> profession list.
+        [{"text": "📄 Dossier à fournir",
+          "callback_data": "sp_traitement"}],
+    ]
+
+    send(chat_id, "🇪🇸 Espagne\n\nChoisissez le service souhaité :", with_home(rows))
+
+
+# -------------------- SPAIN APPOINTMENTS --------------------
+
+def show_regions(chat_id):
+    rows = [
+        [
+            {"text": "🇩🇿 Alger", "callback_data": "region_alger"},
+            {"text": "🇩🇿 Oran", "callback_data": "region_oran"},
+        ]
+    ]
+
+    send(chat_id, "Choisissez votre ville :", with_home(rows))
+
+
+def show_centers(chat_id, region):
+    if region == "alger":
+        centers = [
+            ("À domicile Alger", "center_home_alger"),
+            ("ALG 1", "center_alg1"),
+            ("ALG 2", "center_alg2"),
+            ("ALG 3", "center_alg3"),
+        ]
+    else:
+        centers = [
+            ("À domicile Oran", "center_home_oran"),
+            ("Oran 1", "center_oran1"),
+            ("Oran 2", "center_oran2"),
+            ("Oran 3", "center_oran3"),
+        ]
+
+    rows = [
+        [{"text": label, "callback_data": callback}]
+        for label, callback in centers
+    ]
+
+    send(chat_id, "Choisissez le centre :", with_home(rows))
+
+
+def show_appointment_docs(chat_id, center):
+    if center in ("center_alg1", "center_oran1"):
+        text = (
+            "Documents requis :\n\n"
+            "1. Passeport\n"
+            "2. Carte magnétique : 10 000 DA\n"
+            "3. Photo selfie\n"
+            "4. Contact WhatsApp"
+        )
+
+    elif center in (
+        "center_alg2",
+        "center_alg3",
+        "center_oran2",
+        "center_oran3",
+    ):
+        text = (
+            "Documents requis :\n\n"
+            "1. Passeport\n"
+            "2. Dernier visa Espagne\n"
+            "3. Carte magnétique : 1 000 000 DA\n"
+            "4. Photo selfie\n"
+            "5. Contact WhatsApp"
+        )
+
+    elif center in ("center_home_alger", "center_home_oran"):
+        text = (
+            "Documents requis pour le rendez-vous à domicile :\n\n"
+            "1. Passeport\n"
+            "2. Fiche familiale en France\n"
+            "3. Numéro de téléphone\n"
+            "4. Adresse du domicile\n"
+            "5. Email\n"
+            "6. Contact WhatsApp"
+        )
+
+    else:
+        show_contact(chat_id)
         return
 
-    callback = update.get("callback_query")
-    if not callback:
-        return
+    send(chat_id, text, whatsapp_button() + home_button())
 
-    try:
-        telegram("answerCallbackQuery", {
-            "callback_query_id": callback["id"]
-        })
-    except Exception:
-        pass
 
-    chat_id = callback["message"]["chat"]["id"]
+# -------------------- GENERAL DOCUMENTS --------------------
+
+GENERAL_DOCS = (
+    "📄 Documents généraux — Visa Espagne\n\n"
+    "1. Formulaire uniforme de demande de visa dûment rempli et signé, "
+    "avec une photo récente en couleur, de face, sur fond blanc.\n\n"
+    "2. Passeport valable au moins trois mois après l'expiration du visa "
+    "et comportant au minimum deux pages vierges.\n\n"
+    "3. Photocopies de toutes les pages du passeport actuel, délivré depuis "
+    "moins de dix ans.\n\n"
+    "4. Assurance voyage couvrant le premier séjour, valable dans tout "
+    "l'espace Schengen, avec une couverture médicale et de rapatriement "
+    "d'au moins 30 000 €.\n\n"
+    "5. Justificatifs de moyens de subsistance : relevés bancaires des "
+    "six derniers mois ou autres justificatifs de ressources.\n\n"
+    "6. Pour les mineurs ne voyageant pas avec leurs deux parents : "
+    "autorisation parentale et extrait de naissance. Si le tuteur n'est "
+    "pas un parent, fournir également les justificatifs de tutelle.\n\n"
+    "7. Si le demandeur dépose seul le dossier et présente les documents "
+    "d'un conjoint, parent, frère, sœur, enfant ou employeur : prise en "
+    "charge légalisée par la personne concernée ou attestation de l'employeur.\n\n"
+    "8. Pour les demandeurs non algériens : titre de séjour en Algérie "
+    "valable au moins trois mois après l'expiration du visa. En cas de "
+    "renouvellement en cours, joindre le justificatif de renouvellement.\n\n"
+    "9. Réservation d'hôtel confirmée en Espagne.\n\n"
+    "10. Réservation de billet d'avion aller-retour avec itinéraire.\n\n"
+    "11. Pour les femmes enceintes : rapport médical détaillé.\n\n"
+    "12. Fiche familiale pour les demandeurs mariés.\n\n"
+    "13. Certificat de résidence lorsque requis, notamment selon le lieu "
+    "de dépôt ou le lieu de délivrance du passeport.\n\n"
+    "14. Présenter les originaux ainsi qu'un jeu complet de photocopies."
+)
+
+
+def show_general_docs(chat_id):
+    send(chat_id, GENERAL_DOCS, home_button())
+
+
+# -------------------- PROFESSION DOCUMENTS --------------------
+
+PROFESSIONS = [
+    ("Salarié", "job_salarie"),
+    ("Commerçant", "job_commercant"),
+    ("Professions libérales / Hirafi", "job_liberal"),
+    ("Agriculteur", "job_agriculteur"),
+    ("Retraité", "job_retraite"),
+    ("Fonctionnaire", "job_fonctionnaire"),
+    ("Étudiant", "job_etudiant"),
+    ("Sans emploi", "job_sans_emploi"),
+]
+
+
+def show_professions(chat_id):
+    rows = [
+        [{"text": label, "callback_data": callback}]
+        for label, callback in PROFESSIONS
+    ]
+
+    send(chat_id, "Choisissez votre profession :", with_home(rows))
+
+
+PROFESSION_DOCS = {
+    "job_commercant": (
+        "📄 Documents — Commerçant\n\n"
+        "1. Registre de commerce avec traduction française\n"
+        "2. C20\n"
+        "3. Existence\n"
+        "4. Extrait de rôle\n"
+        "5. CASNOS\n"
+        "6. Relevés de compte bancaire en dinars des six derniers mois\n"
+        "7. Attestation de solde en euros : minimum 2 500 €\n"
+        "8. Acte de naissance en France\n"
+        "9. Fiche familiale en France\n"
+        "10. Acte de mariage en France\n"
+        "11. Passeport\n"
+        "12. Deux photos d'identité"
+    ),
+
+    "job_salarie": (
+        "📄 Documents — Salarié\n\n"
+        "1. Attestation de travail\n"
+        "2. Les trois dernières fiches de paie\n"
+        "3. CNAS\n"
+        "4. Titre de congé\n"
+        "5. Relevés de compte bancaire en dinars des six derniers mois\n"
+        "6. Attestation de solde en euros : minimum 2 500 €\n"
+        "7. Acte de naissance en France\n"
+        "8. Fiche familiale en France\n"
+        "9. Acte de mariage en France\n"
+        "10. Passeport\n"
+        "11. Deux photos d'identité"
+    ),
+
+    "job_liberal": (
+        "📄 Documents — Professions libérales / Hirafi\n\n"
+        "1. Carte professionnelle\n"
+        "2. C20\n"
+        "3. Existence\n"
+        "4. Extrait de rôle\n"
+        "5. Attestation CASNOS\n"
+        "6. Relevés de compte bancaire en dinars des six derniers mois\n"
+        "7. Attestation de solde en euros : minimum 2 500 €\n"
+        "8. Acte de naissance en France\n"
+        "9. Fiche familiale en France\n"
+        "10. Acte de mariage en France\n"
+        "11. Passeport\n"
+        "12. Deux photos d'identité"
+    ),
+
+    "job_etudiant": (
+        "📄 Documents — Étudiant\n\n"
+        "1. Carte de scolarité\n"
+        "2. Relevés de compte bancaire en dinars des six derniers mois\n"
+        "3. Attestation de solde en euros : minimum 2 500 €\n"
+        "4. Acte de naissance en France\n"
+        "5. Prise en charge\n"
+        "6. Passeport\n"
+        "7. Deux photos d'identité\n"
+        "8. Autorisation parentale pour les mineurs\n"
+        "9. Dossier du garant : documents de la personne qui finance le voyage"
+    ),
+}
+
+
+def show_profession_docs(chat_id, callback):
+    text = PROFESSION_DOCS.get(callback)
+
+    if text:
+        send(chat_id, text, home_button())
+    else:
+        send(
+            chat_id,
+            "La liste des documents pour cette profession doit être confirmée. "
+            "Veuillez nous contacter pour obtenir les informations.",
+            whatsapp_button() + home_button(),
+        )
+
+
+# -------------------- CALLBACK ROUTING --------------------
+
+def handle_callback(callback):
+    callback_id = callback.get("id")
     data = callback.get("data", "")
+    message = callback.get("message") or {}
+    chat = message.get("chat") or {}
+    chat_id = chat.get("id")
 
-    if data == "menu":
+    if not chat_id:
+        answer_callback(callback_id)
+        return
+
+    answer_callback(callback_id)
+
+    if data == "home":
         start_menu(chat_id)
-    elif data.startswith("country_"):
-        show_country(chat_id, data[len("country_"):])
+
+    elif data == "country_es":
+        show_spain_menu(chat_id)
+
     elif data == "sp_rdv":
         show_regions(chat_id)
-    elif data == "sp_alger":
+
+    elif data == "region_alger":
         show_centers(chat_id, "alger")
-    elif data == "sp_oran":
+
+    elif data == "region_oran":
         show_centers(chat_id, "oran")
-    elif data in (
-        "home_alger", "home_oran",
-        "alg1", "alg2", "alg3",
-        "oran1", "oran2", "oran3",
-    ):
+
+    elif data.startswith("center_"):
         show_appointment_docs(chat_id, data)
+
+    # Corrected mapping: Traitement du dossier -> general documents.
+    elif data == "general_docs":
+        show_general_docs(chat_id)
+
+    # Corrected mapping: Dossier à fournir -> professions.
     elif data == "sp_traitement":
         show_professions(chat_id)
-    elif data in dict((key, label) for label, key in PROFESSIONS):
+
+    elif data.startswith("job_"):
         show_profession_docs(chat_id, data)
-    elif data == "general_docs":
-        send(chat_id, GENERAL_DOCS, home_button())
-    elif data == "appointments":
-        show_country(chat_id, "espagne")
-    elif data == "documents":
-        show_professions(chat_id)
-    elif data == "prices":
-        send(chat_id, "💰 الأسعار حسب نوع الخدمة. تواصل معنا للتفاصيل.",
-             whatsapp_button() + home_button())
-    elif data == "travel":
-        send(chat_id, "✈️ للاستفسار عن السفر والحجوزات، تواصل معنا.",
-             whatsapp_button() + home_button())
-    elif data == "contact":
+
+    elif data == "country_other":
+        show_contact(chat_id)
+
+    elif data.startswith("country_"):
+        show_contact(chat_id)
+
+    else:
         show_contact(chat_id)
 
 
+# -------------------- VERCEL WEBHOOK HANDLER --------------------
+
 class handler(BaseHTTPRequestHandler):
-    def do_GET(self):
-        self.send_response(200)
+
+    def _send_response(self, status, body):
+        encoded = body.encode("utf-8")
+        self.send_response(status)
+        self.send_header("Content-Type", "text/plain; charset=utf-8")
+        self.send_header("Content-Length", str(len(encoded)))
         self.end_headers()
-        self.wfile.write(b"MALIK TRAVEL bot is running")
+        self.wfile.write(encoded)
+
+    def do_GET(self):
+        self._send_response(200, "MALIK TRAVEL bot is ready.")
 
     def do_POST(self):
         if WEBHOOK_SECRET:
-            received = self.headers.get(
+            received_secret = self.headers.get(
                 "X-Telegram-Bot-Api-Secret-Token", ""
             )
-            if received != WEBHOOK_SECRET:
-                self.send_response(403)
-                self.end_headers()
-                self.wfile.write(b"Forbidden")
+            if received_secret != WEBHOOK_SECRET:
+                self._send_response(403, "Forbidden")
                 return
 
         try:
             length = int(self.headers.get("Content-Length", "0"))
-            raw = self.rfile.read(length)
-            update = json.loads(raw.decode("utf-8"))
-            handle_update(update)
-            self.send_response(200)
-            self.end_headers()
-            self.wfile.write(b"OK")
-        except Exception:
-            self.send_response(200)
-            self.end_headers()
-            self.wfile.write(b"OK")
+            raw_body = self.rfile.read(length)
+            update = json.loads(raw_body.decode("utf-8"))
 
-    def log_message(self, format, *args):
-        return
+            callback = update.get("callback_query")
+            if callback:
+                handle_callback(callback)
+            else:
+                message = update.get("message") or {}
+                chat = message.get("chat") or {}
+                chat_id = chat.get("id")
+                text = (message.get("text") or "").strip()
+
+                if chat_id and (text == "/start" or text.startswith("/start ")):
+                    start_menu(chat_id)
+
+                elif chat_id and text in ("/menu", "Menu principal"):
+                    start_menu(chat_id)
+
+        except (ValueError, TypeError):
+            logger.exception("Invalid Telegram update")
+        except (URLError, HTTPError, RuntimeError):
+            logger.exception("Telegram API request failed")
+        except Exception:
+            logger.exception("Unexpected webhook error")
+
+        # Telegram should receive a successful response to the webhook.
+        self._send_response(200, "OK")
