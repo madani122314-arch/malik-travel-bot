@@ -50,11 +50,12 @@ PROFESSIONS = [
 ]
 
 COMMON_PROFESSION_DOCS = [
-    "Formulaire uniforme de demande de visa dûment rempli et signé, avec une photo couleur récente de face sur fond blanc.",
-    "Passeport valide au moins 3 mois après l’expiration du visa demandé et comportant au moins 2 pages vierges.",
-    "Photocopies de toutes les pages du passeport actuel. Le passeport doit avoir été délivré depuis moins de 10 ans.",
-    "Assurance voyage couvrant la durée du premier séjour, valable dans tout l’espace Schengen, avec une couverture médicale et de rapatriement d’au moins 30 000 €.",
-    "Justificatifs de moyens financiers : relevés bancaires des 6 derniers mois ou autres justificatifs de ressources.",
+    "Formulaire visa signé + photo récente en couleur, de face, sur fond blanc.",
+    "Passeport valide 3 mois après l’expiration du visa, avec au moins 2 pages libres.",
+    "Photocopies de toutes les pages du passeport, délivré depuis moins de 10 ans.",
+    "Assurance voyage Schengen couvrant le séjour, frais médicaux et rapatriement : minimum 30 000 €.",
+    "Relevés bancaires en DZD des 6 derniers mois.",
+    "Attestation de solde bancaire : minimum 2 500 €.",
 ]
 
 PROFESSION_DOCS = {
@@ -96,11 +97,12 @@ PROFESSION_DOCS = {
 }
 
 GENERAL_DOCS = [
-    "Formulaire uniforme de demande de visa dûment rempli et signé, avec une photo couleur récente de face sur fond blanc.",
-    "Passeport valide jusqu’à au moins 3 mois après l’expiration du visa demandé et comportant au moins 2 pages vierges.",
-    "Photocopies de toutes les pages du passeport actuel. Le passeport doit avoir été délivré depuis moins de 10 ans.",
-    "Assurance voyage couvrant la durée du premier séjour, valable dans tout l’espace Schengen, avec une couverture médicale et de rapatriement d’au moins 30 000 €.",
-    "Justificatifs de moyens financiers : relevés bancaires des 6 derniers mois ou autres justificatifs de ressources.",
+    "Formulaire visa signé + photo récente en couleur, de face, sur fond blanc.",
+    "Passeport valide 3 mois après l’expiration du visa, avec au moins 2 pages libres.",
+    "Photocopies de toutes les pages du passeport, délivré depuis moins de 10 ans.",
+    "Assurance voyage Schengen couvrant le séjour, frais médicaux et rapatriement : minimum 30 000 €.",
+    "Relevés bancaires en DZD des 6 derniers mois.",
+    "Attestation de solde bancaire : minimum 2 500 €.",
     "Pour les mineurs ne voyageant pas avec leurs deux parents : autorisation parentale et extrait de naissance. Si le tuteur n’est pas un parent, joindre le justificatif de tutelle (acte de décès ou jugement, selon le cas).",
     "Si le demandeur dépose seul le dossier et présente des documents d’un conjoint, parent, frère, sœur, enfant ou employeur : prise en charge légalisée par la personne concernée, ou lettre de l’employeur.",
     "Pour les demandeurs non algériens : titre de séjour en Algérie valide au moins 3 mois après l’expiration du visa. Si le renouvellement est en cours, joindre une preuve de la demande de renouvellement.",
