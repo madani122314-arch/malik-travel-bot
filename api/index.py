@@ -50,12 +50,13 @@ PROFESSIONS = [
 ]
 
 COMMON_PROFESSION_DOCS = [
-    "Formulaire visa signé + photo récente en couleur, de face, sur fond blanc.",
-    "Passeport valide 3 mois après l’expiration du visa, avec au moins 2 pages libres.",
-    "Photocopies de toutes les pages du passeport, délivré depuis moins de 10 ans.",
-    "Assurance voyage Schengen couvrant le séjour, frais médicaux et rapatriement : minimum 30 000 €.",
-    "Relevés bancaires en DZD des 6 derniers mois.",
-    "Attestation de solde bancaire : minimum 2 500 €.",
+    "Formulaire uniforme de demande de visa dûment rempli et signé, avec une photo couleur récente de face sur fond blanc.",
+    "Passeport valide au moins 3 mois après l’expiration du visa demandé et comportant au moins 2 pages vierges.",
+    "Photocopies de toutes les pages du passeport actuel. Le passeport doit avoir été délivré depuis moins de 10 ans.",
+    "Assurance voyage couvrant la durée du premier séjour, valable dans tout l’espace Schengen, avec une couverture médicale et de rapatriement d’au moins 30 000 €.",
+    "Justificatifs de moyens financiers : autres justificatifs de ressources, si disponibles.",
+    "Relevés de compte bancaire en dinars des 6 derniers mois.",
+    "Attestation de solde bancaire d’un montant minimum de 2 500 €.",
 ]
 
 PROFESSION_DOCS = {
@@ -97,12 +98,11 @@ PROFESSION_DOCS = {
 }
 
 GENERAL_DOCS = [
-    "Formulaire visa signé + photo récente en couleur, de face, sur fond blanc.",
-    "Passeport valide 3 mois après l’expiration du visa, avec au moins 2 pages libres.",
-    "Photocopies de toutes les pages du passeport, délivré depuis moins de 10 ans.",
-    "Assurance voyage Schengen couvrant le séjour, frais médicaux et rapatriement : minimum 30 000 €.",
-    "Relevés bancaires en DZD des 6 derniers mois.",
-    "Attestation de solde bancaire : minimum 2 500 €.",
+    "Formulaire uniforme de demande de visa dûment rempli et signé, avec une photo couleur récente de face sur fond blanc.",
+    "Passeport valide jusqu’à au moins 3 mois après l’expiration du visa demandé et comportant au moins 2 pages vierges.",
+    "Photocopies de toutes les pages du passeport actuel. Le passeport doit avoir été délivré depuis moins de 10 ans.",
+    "Assurance voyage couvrant la durée du premier séjour, valable dans tout l’espace Schengen, avec une couverture médicale et de rapatriement d’au moins 30 000 €.",
+    "Justificatifs de moyens financiers : relevés bancaires des 6 derniers mois ou autres justificatifs de ressources.",
     "Pour les mineurs ne voyageant pas avec leurs deux parents : autorisation parentale et extrait de naissance. Si le tuteur n’est pas un parent, joindre le justificatif de tutelle (acte de décès ou jugement, selon le cas).",
     "Si le demandeur dépose seul le dossier et présente des documents d’un conjoint, parent, frère, sœur, enfant ou employeur : prise en charge légalisée par la personne concernée, ou lettre de l’employeur.",
     "Pour les demandeurs non algériens : titre de séjour en Algérie valide au moins 3 mois après l’expiration du visa. Si le renouvellement est en cours, joindre une preuve de la demande de renouvellement.",
@@ -209,8 +209,84 @@ def show_spain_menu(chat_id, message_id=None):
 
 
 def show_general_docs(chat_id, message_id=None):
-    text = "📂 <b>TRAITEMENT DU DOSSIER — ESPAGNE</b>\n\n<b>Liste générale des documents :</b>\n\n" + numbered(GENERAL_DOCS)
-    rows = [[button("⬅️ Retour Espagne", "country_es")], [{"text": "📱 Contact WhatsApp", "url": WHATSAPP_URL}], [button("🏠 Menu principal", "home")]]
+    text = """📂 <b>TRAITEMENT DU DOSSIER — ESPAGNE</b>
+<b>خدمات معالجة ملف التأشيرة — إسبانيا</b>
+
+━━━━━━━━━━━━━━━━━━
+📝 <b>1. FORMULAIRE VISA SCHENGEN</b>
+<b>استمارة تأشيرة شنغن</b>
+• Saisie complète et fiable
+• Vérification des données
+• Conforme aux exigences des consulats
+
+• تعبئة كاملة ودقيقة للاستمارة
+• مراجعة المعلومات
+• احترام متطلبات القنصليات
+
+━━━━━━━━━━━━━━━━━━
+🏨 <b>2. RÉSERVATION HÔTEL CONFIRMÉE</b>
+<b>حجز فندقي مؤكد</b>
+• Hôtels partenaires fiables
+• Confirmation selon disponibilité
+• Justificatif adapté aux exigences du dossier
+
+• فنادق موثوقة
+• تأكيد الحجز حسب التوفر
+• وثيقة مناسبة لمتطلبات الملف
+
+━━━━━━━━━━━━━━━━━━
+✈️ <b>3. TELEX / RÉSERVATION BILLET D’AVION</b>
+<b>تيليكس / حجز تذكرة الطيران</b>
+• Air Algérie, Vueling et autres compagnies
+• Réservation vérifiable selon le service proposé
+• Tarifs compétitifs et traitement rapide
+
+• الخطوط الجوية الجزائرية وVueling وشركات أخرى
+• حجز قابل للتحقق حسب الخدمة المتاحة
+• أسعار تنافسية وخدمة سريعة
+
+━━━━━━━━━━━━━━━━━━
+🗺️ <b>4. PLAN DE VOYAGE</b>
+<b>خطة السفر</b>
+• Itinéraire détaillé jour par jour
+• Hébergements et déplacements
+• Présentation claire du programme
+
+• برنامج سفر مفصل يومًا بيوم
+• الإقامة والتنقلات
+• تنظيم واضح لبرنامج الرحلة
+
+━━━━━━━━━━━━━━━━━━
+✍️ <b>5. LETTRE DE MOTIVATION</b>
+<b>رسالة تحفيزية لطلب التأشيرة</b>
+• Rédaction personnalisée
+• Adaptée à votre profil
+• Présentation claire de votre projet de voyage
+
+• كتابة مخصصة حسب الحالة
+• مناسبة للملف الشخصي
+• توضيح هدف ومشروع السفر
+
+━━━━━━━━━━━━━━━━━━
+📁 <b>6. PRÉPARATION DU DOSSIER SELON L’ACTIVITÉ</b>
+<b>تحضير الملف حسب النشاط المهني</b>
+• Salarié · Commerçant · Agriculteur
+• Retraité · Étudiant · Autres situations
+• Analyse de la situation et liste des documents nécessaires
+• Conseils personnalisés pour préparer le dossier
+
+• أجير · تاجر · فلاح
+• متقاعد · طالب · حالات أخرى
+• دراسة الوضعية وتحديد الوثائق المطلوبة
+• إرشادات مخصصة لتحضير الملف
+
+━━━━━━━━━━━━━━━━━━
+📩 <b>Contactez-nous pour les informations et les tarifs.</b>
+<b>تواصلوا معنا لمعرفة التفاصيل والأسعار.</b>"""
+    rows = [
+        [{"text": "📱 Contact WhatsApp", "url": WHATSAPP_URL}],
+        [button("🏠 Menu principal", "home")],
+    ]
     return edit_or_send(chat_id, message_id, text, keyboard(rows))
 
 
