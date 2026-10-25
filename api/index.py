@@ -3,7 +3,6 @@ import json
 import os
 import logging
 from urllib.request import Request, urlopen
-
 from http.server import BaseHTTPRequestHandler
 
 logging.basicConfig(level=logging.INFO)
@@ -12,7 +11,6 @@ logger = logging.getLogger(__name__)
 TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "")
 WEBHOOK_SECRET = os.environ.get("TELEGRAM_WEBHOOK_SECRET", "")
 WHATSAPP_URL = "https://wa.me/213779749129"
-
 TELEGRAM_API = f"https://api.telegram.org/bot{TOKEN}/"
 
 
@@ -44,16 +42,32 @@ def send(chat_id, text, keyboard=None):
 
 
 def home_button():
-    return [[{"text": "🏠 Menu principal", "callback_data": "home"}]]
+    return [[{
+        "text": "🏠 Menu principal",
+        "callback_data": "home",
+    }]]
 
 
 def whatsapp_button():
-    return [[{"text": "📱 Contact WhatsApp", "url": WHATSAPP_URL}]]
+    return [[{
+        "text": "📱 Contact WhatsApp",
+        "url": WHATSAPP_URL,
+    }]]
 
 
 def with_home(rows):
     return rows + home_button()
 
+
+def show_contact(chat_id):
+    send(
+        chat_id,
+        "Pour plus d'informations, veuillez nous contacter sur WhatsApp.",
+        whatsapp_button() + home_button(),
+    )
+
+
+# -------------------- WELCOME AND COUNTRIES --------------------
 
 WELCOME = (
     "✈️ مرحبا بكم في MALIK TRAVEL 🌍\n\n"
@@ -84,35 +98,50 @@ COUNTRIES = [
 
 def start_menu(chat_id):
     rows = []
+
     for i in range(0, len(COUNTRIES), 2):
         row = [{
             "text": COUNTRIES[i][0],
             "callback_data": COUNTRIES[i][1],
         }]
+
         if i + 1 < len(COUNTRIES):
             row.append({
                 "text": COUNTRIES[i + 1][0],
                 "callback_data": COUNTRIES[i + 1][1],
             })
+
         rows.append(row)
 
     send(chat_id, WELCOME + "\n\nChoisissez votre destination :", rows)
 
 
+# -------------------- SPAIN MENU --------------------
+
 def show_spain_menu(chat_id):
     rows = [
         [{"text": "📅 RDV", "callback_data": "sp_rdv"}],
-        [{"text": "📂 Traitement du dossier", "callback_data": "general_docs"}],
-        [{"text": "📄 Dossier à fournir", "callback_data": "sp_traitement"}],
+        [{"text": "📂 Traitement du dossier",
+          "callback_data": "general_docs"}],
+        [{"text": "📄 Dossier à fournir",
+          "callback_data": "sp_traitement"}],
     ]
-    send(chat_id, "🇪🇸 Espagne\n\nChoisissez le service souhaité :", with_home(rows))
 
+    send(
+        chat_id,
+        "🇪🇸 Espagne\n\nChoisissez le service souhaité :",
+        with_home(rows),
+    )
+
+
+# -------------------- APPOINTMENTS --------------------
 
 def show_regions(chat_id):
     rows = [[
         {"text": "🇩🇿 Alger", "callback_data": "region_alger"},
         {"text": "🇩🇿 Oran", "callback_data": "region_oran"},
     ]]
+
     send(chat_id, "Choisissez votre ville :", with_home(rows))
 
 
@@ -132,15 +161,22 @@ def show_centers(chat_id, region):
             ("Oran 3", "center_oran3"),
         ]
 
-    rows = [[{"text": label, "callback_data": callback}]
-            for label, callback in centers]
+    rows = [
+        [{"text": label, "callback_data": callback}]
+        for label, callback in centers
+    ]
+
     send(chat_id, "Choisissez le centre :", with_home(rows))
 
 
 def show_appointment_docs(chat_id, center):
     paid_centers = {
-        "center_alg1", "center_alg2", "center_alg3",
-        "center_oran1", "center_oran2", "center_oran3",
+        "center_alg1",
+        "center_alg2",
+        "center_alg3",
+        "center_oran1",
+        "center_oran2",
+        "center_oran3",
     }
 
     if center in paid_centers:
@@ -149,8 +185,7 @@ def show_appointment_docs(chat_id, center):
             "1. Passeport\n"
             "2. Dernier visa Espagne\n"
             "3. Carte magnétique : 10 000 DA\n"
-            "4. Photo selfie\n"
-            "5. Contact WhatsApp"
+            "4. Photo selfie"
         )
 
     elif center in ("center_home_alger", "center_home_oran"):
@@ -160,15 +195,17 @@ def show_appointment_docs(chat_id, center):
             "2. Fiche familiale en France\n"
             "3. Numéro de téléphone\n"
             "4. Adresse du domicile\n"
-            "5. Email\n"
-            "6. Contact WhatsApp"
+            "5. Email"
         )
+
     else:
         show_contact(chat_id)
         return
 
     send(chat_id, text, whatsapp_button() + home_button())
 
+
+# -------------------- GENERAL DOCUMENTS --------------------
 
 GENERAL_DOCS = (
     "📄 Documents généraux — Visa Espagne\n\n"
@@ -204,6 +241,8 @@ def show_general_docs(chat_id):
     send(chat_id, GENERAL_DOCS, home_button())
 
 
+# -------------------- PROFESSIONS --------------------
+
 PROFESSIONS = [
     ("Salarié", "job_salarie"),
     ("Commerçant", "job_commercant"),
@@ -217,8 +256,11 @@ PROFESSIONS = [
 
 
 def show_professions(chat_id):
-    rows = [[{"text": label, "callback_data": callback}]
-            for label, callback in PROFESSIONS]
+    rows = [
+        [{"text": label, "callback_data": callback}]
+        for label, callback in PROFESSIONS
+    ]
+
     send(chat_id, "Choisissez votre profession :", with_home(rows))
 
 
@@ -238,6 +280,7 @@ PROFESSION_DOCS = {
         "11. Passeport\n"
         "12. Deux photos d'identité"
     ),
+
     "job_salarie": (
         "Documents — Salarié\n\n"
         "1. Attestation de travail\n"
@@ -252,6 +295,7 @@ PROFESSION_DOCS = {
         "10. Passeport\n"
         "11. Deux photos d'identité"
     ),
+
     "job_liberal": (
         "Documents — Professions libérales / Hirafi\n\n"
         "1. Carte professionnelle\n"
@@ -267,6 +311,7 @@ PROFESSION_DOCS = {
         "11. Passeport\n"
         "12. Deux photos d'identité"
     ),
+
     "job_etudiant": (
         "Documents — Étudiant\n\n"
         "1. Carte de scolarité\n"
@@ -284,6 +329,7 @@ PROFESSION_DOCS = {
 
 def show_profession_docs(chat_id, callback):
     text = PROFESSION_DOCS.get(callback)
+
     if text:
         send(chat_id, text, home_button())
     else:
@@ -295,13 +341,7 @@ def show_profession_docs(chat_id, callback):
         )
 
 
-def show_contact(chat_id):
-    send(
-        chat_id,
-        "Pour plus d'informations, veuillez nous contacter sur WhatsApp.",
-        whatsapp_button() + home_button(),
-    )
-
+# -------------------- CALLBACK ROUTING --------------------
 
 def handle_callback(callback):
     callback_id = callback.get("id")
@@ -312,7 +352,10 @@ def handle_callback(callback):
 
     if callback_id:
         try:
-            telegram("answerCallbackQuery", {"callback_query_id": callback_id})
+            telegram(
+                "answerCallbackQuery",
+                {"callback_query_id": callback_id},
+            )
         except Exception:
             logger.exception("Could not answer callback")
 
@@ -343,6 +386,8 @@ def handle_callback(callback):
         show_contact(chat_id)
 
 
+# -------------------- VERCEL WEBHOOK --------------------
+
 class handler(BaseHTTPRequestHandler):
 
     def _send_response(self, status, body):
@@ -370,6 +415,7 @@ class handler(BaseHTTPRequestHandler):
             update = json.loads(self.rfile.read(length).decode("utf-8"))
 
             callback = update.get("callback_query")
+
             if callback:
                 handle_callback(callback)
             else:
